@@ -1,0 +1,17 @@
+// Scss Imports linki. Bir Scss dosyası içerisinde bir use kullanımı varsa bu ilkl satırdfa olmak zorundadır aksi halde hata alınır.
+@use "./reset";
+@use "./variables";
+
+// * Google Fonts
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap");
+
+// Global Styles
+
+body {
+  background-color: variables.$bg-color;
+  color: variables.$text-color;
+  font-family: variables.$font-family;
+  a {
+    color: variables.$text-color;
+  }
+}
