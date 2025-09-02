@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Qix Tarzı — Grid Fill</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --bg: #0b1020;
+        --fg: #e5e7eb;
+        --good: #22c55e;
+        --warn: #f59e0b;
+        --bad: #ef4444;
+        --trail: #67e8f9;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: linear-gradient(180deg, #0b1020, #090c18);
+        color: var(--fg);
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
+          Arial, sans-serif;
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 16px auto;
+        padding: 12px;
+      }
+      .panel {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 6px 0 12px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0.3em 0.7em;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.06);
+        font-size: 0.9rem;
+      }
+      .kbd {
+        padding: 0.15em 0.45em;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-bottom-width: 2px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.07);
+      }
+      canvas {
+        background: #0b0f1a;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 14px;
+        width: 100%;
+        height: auto;
+        touch-action: none;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      small.muted {
+        opacity: 0.75;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1 style="margin: 0 0 8px">Qix Tarzı — Grid Fill</h1>
+      <div class="panel">
+        <span class="pill">Hedef: <b>%75</b> alan</span>
+        <span class="pill">Can: <b id="lives">3</b></span>
+        <span class="pill">Seviye: <b id="level">1</b></span>
+        <span class="pill">Doldurulan: <b id="pct">0%</b></span>
+        <span class="pill">Skor: <b id="score">0</b></span>
+      </div>
+      <div class="row" style="margin-bottom: 10px">
+        <span class="pill"
+          ><span class="kbd">←</span> <span class="kbd">→</span>
+          <span class="kbd">↑</span> <span class="kbd">↓</span> — hareket</span
+        >
+        <span class="pill"
+          ><span class="kbd">Space</span> — duraklat/devam</span
+        >
+        <span class="pill"><span class="kbd">R</span> — yeniden başlat</span>
+        <label class="pill" style="cursor: pointer"
+          >Arka plan görseli yükle
+          <input id="file" type="file" accept="image/*" style="display: none" />
+        </label>
+      </div>
+      <canvas id="game" width="900" height="600"></canvas>
+      <small class="muted"
+        >Not: Kapanan bölgenin içindeki çizgiler artık temizlenir; arka plan
+        “iz” bırakmadan görünür.</small
+      >
+    </div>
+
+    <script>
+      (() => {
+        // ---- Temel ayarlar
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
+        const ui = {
+          lives: document.getElementById("lives"),
+          level: document.getElementById("level"),
+          pct: document.getElementById("pct"),
+          score: document.getElementById("score"),
+          file: document.getElementById("file"),
+        };
+
+        // Grid çözünürlüğü
+        const CELL = 4;
+        const GRID_W = Math.floor(canvas.width / CELL);
+        const GRID_H = Math.floor(canvas.height / CELL);
+
+        // Hücre durumları
+        const EMPTY = 0;
+        const WALL = 1;
+        const FILL = 2;
+        const TRAIL = 3;
+
+        // Oyun durumu
+        const S = {
+          grid: new Uint8Array(GRID_W * GRID_H),
+          player: { x: 1, y: GRID_H - 2, dir: { x: 1, y: 0 }, drawing: false },
+          enemies: [],
+          lives: 3,
+          level: 1,
+          targetPct: 0.75,
+          paused: false,
+          score: 0,
+          last: performance.now(),
+          trailMask: new Uint8Array(GRID_W * GRID_H), // << çizilen hattın maskesi
+        };
+
+        // Arka plan
+        const bg = new Image();
+        let bgReady = false;
+        bg.onload = () => (bgReady = true);
+
+        const idx = (x, y) => y * GRID_W + x;
+        const inBounds = (x, y) => x >= 0 && y >= 0 && x < GRID_W && y < GRID_H;
+
+        // Başlangıç grid
+        function initGrid() {
+          S.grid.fill(EMPTY);
+          for (let x = 0; x < GRID_W; x++) {
+            S.grid[idx(x, 0)] = WALL;
+            S.grid[idx(x, GRID_H - 1)] = WALL;
+          }
+          for (let y = 0; y < GRID_H; y++) {
+            S.grid[idx(0, y)] = WALL;
+            S.grid[idx(GRID_W - 1, y)] = WALL;
+          }
+        }
+
+        function spawnEnemies(n) {
+          S.enemies.length = 0;
+          for (let i = 0; i < n; i++) {
+            let x = Math.floor(GRID_W * 0.25 + Math.random() * GRID_W * 0.5);
+            let y = Math.floor(GRID_H * 0.25 + Math.random() * GRID_H * 0.5);
+            S.enemies.push({
+              x,
+              y,
+              vx:
+                (Math.random() < 0.5 ? 1 : -1) *
+                (1.0 + Math.random() * 0.6) *
+                (1 + (S.level - 1) * 0.15),
+              vy:
+                (Math.random() < 0.5 ? 1 : -1) *
+                (1.0 + Math.random() * 0.6) *
+                (1 + (S.level - 1) * 0.15),
+              r: 0.6,
+            });
+          }
+        }
+
+        function resetPlayer() {
+          S.player.x = 1;
+          S.player.y = GRID_H - 2;
+          S.player.dir = { x: 1, y: 0 };
+          S.player.drawing = false;
+        }
+
+        function startLevel(lvl = 1) {
+          S.level = lvl;
+          initGrid();
+          resetPlayer();
+          spawnEnemies(Math.min(2 + Math.floor(lvl / 2), 6));
+          S.score = 0;
+          updateUI();
+        }
+
+        function updateUI() {
+          ui.lives.textContent = S.lives;
+          ui.level.textContent = S.level;
+          ui.pct.textContent = Math.round(fillRatio() * 100) + "%";
+          ui.score.textContent = Math.round(S.score);
+        }
+
+        function fillRatio() {
+          let fill = 0,
+            inner = 0;
+          for (let y = 1; y < GRID_H - 1; y++) {
+            for (let x = 1; x < GRID_W - 1; x++) {
+              const v = S.grid[idx(x, y)];
+              if (v !== WALL) inner++;
+              if (v === FILL) fill++;
+            }
+          }
+          return inner ? fill / inner : 0;
+        }
+
+        const keys = new Set();
+        window.addEventListener("keydown", (e) => {
+          if (
+            [
+              "ArrowLeft",
+              "ArrowRight",
+              "ArrowUp",
+              "ArrowDown",
+              " ",
+              "r",
+              "R",
+            ].includes(e.key)
+          )
+            e.preventDefault();
+          keys.add(e.key);
+          if (e.key === " ") S.paused = !S.paused;
+          if (e.key === "r" || e.key === "R") {
+            S.lives = 3;
+            startLevel(1);
+          }
+        });
+        window.addEventListener("keyup", (e) => keys.delete(e.key));
+
+        function stepPlayer() {
+          let dx = 0,
+            dy = 0;
+          if (keys.has("ArrowLeft")) {
+            dx = -1;
+            dy = 0;
+          }
+          if (keys.has("ArrowRight")) {
+            dx = 1;
+            dy = 0;
+          }
+          if (keys.has("ArrowUp")) {
+            dx = 0;
+            dy = -1;
+          }
+          if (keys.has("ArrowDown")) {
+            dx = 0;
+            dy = 1;
+          }
+          if (dx === 0 && dy === 0) return;
+
+          const nx = S.player.x + dx,
+            ny = S.player.y + dy;
+          if (!inBounds(nx, ny)) return;
+
+          const here = S.grid[idx(S.player.x, S.player.y)];
+          const there = S.grid[idx(nx, ny)];
+
+          // Kenardan boşluğa girince çizime başla
+          if (!S.player.drawing && here === WALL && there === EMPTY) {
+            S.player.drawing = true;
+            S.grid[idx(S.player.x, S.player.y)] = WALL;
+            S.grid[idx(nx, ny)] = TRAIL;
+            S.trailMask[idx(nx, ny)] = 1; // << maskeye işle
+            S.player.x = nx;
+            S.player.y = ny;
+            return;
+          }
+
+          // Çizerken
+          if (S.player.drawing) {
+            if (there === TRAIL) {
+              loseLife();
+              return;
+            }
+            S.player.x = nx;
+            S.player.y = ny;
+            if (there === WALL || there === FILL) {
+              S.player.drawing = false;
+              finalizeTrailAndFill();
+            } else {
+              S.grid[idx(nx, ny)] = TRAIL;
+              S.trailMask[idx(nx, ny)] = 1; // << maskeye işle
+            }
+            return;
+          }
+
+          // Kenarda gezinme
+          if (there === WALL || there === FILL) {
+            S.player.x = nx;
+            S.player.y = ny;
+          }
+        }
+
+        function finalizeTrailAndFill() {
+          // 1) TRAIL -> geçici WALL
+          for (let i = 0; i < S.grid.length; i++) {
+            if (S.grid[i] === TRAIL) S.grid[i] = WALL;
+          }
+
+          // 2) Düşman erişilebilirliği (BFS)
+          const reach = new Uint8Array(GRID_W * GRID_H);
+          const qx = [],
+            qy = [];
+          const push = (x, y) => {
+            reach[idx(x, y)] = 1;
+            qx.push(x);
+            qy.push(y);
+          };
+          for (const e of S.enemies) {
+            const ex = Math.round(e.x),
+              ey = Math.round(e.y);
+            if (inBounds(ex, ey) && S.grid[idx(ex, ey)] === EMPTY) push(ex, ey);
+          }
+          if (qx.length === 0) {
+            outer: for (let y = 1; y < GRID_H - 1; y++) {
+              for (let x = 1; x < GRID_W - 1; x++) {
+                if (S.grid[idx(x, y)] === EMPTY) {
+                  push(x, y);
+                  break outer;
+                }
+              }
+            }
+          }
+          const dirs = [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1],
+          ];
+          while (qx.length) {
+            const x = qx.shift(),
+              y = qy.shift();
+            for (const d of dirs) {
+              const nx = x + d[0],
+                ny = y + d[1];
+              if (!inBounds(nx, ny)) continue;
+              const id = idx(nx, ny);
+              if (reach[id]) continue;
+              if (S.grid[id] === EMPTY) {
+                reach[id] = 1;
+                qx.push(nx);
+                qy.push(ny);
+              }
+            }
+          }
+
+          // 3) Ulaşılamayan EMPTY -> FILL
+          let gained = 0;
+          for (let y = 1; y < GRID_H - 1; y++) {
+            for (let x = 1; x < GRID_W - 1; x++) {
+              const i = idx(x, y);
+              if (S.grid[i] === EMPTY && !reach[i]) {
+                S.grid[i] = FILL;
+                gained++;
+              }
+            }
+          }
+
+          // 4) Trail’in içte kalan parçalarını FILL yap (izleri sil)
+          for (let y = 1; y < GRID_H - 1; y++) {
+            for (let x = 1; x < GRID_W - 1; x++) {
+              const i = idx(x, y);
+              if (S.trailMask[i] !== 1) continue; // yalnızca bu kapanışın hattı
+              if (S.grid[i] !== WALL) continue;
+
+              let hasFill = false,
+                touchesReach = false;
+              for (const d of dirs) {
+                const nx = x + d[0],
+                  ny = y + d[1],
+                  j = idx(nx, ny);
+                if (!inBounds(nx, ny)) continue;
+                if (S.grid[j] === FILL) hasFill = true;
+                if (reach[j] === 1 && S.grid[j] === EMPTY) touchesReach = true; // canlı boşluğa bakıyor mu
+              }
+              if (hasFill && !touchesReach) {
+                S.grid[i] = FILL; // içte kalan duvarı doldur → beyaz çizgi kaybolur
+              }
+            }
+          }
+
+          // 5) Maskeyi temizle
+          S.trailMask.fill(0);
+
+          // 6) Skor & seviye
+          S.score += gained;
+          updateUI();
+          if (fillRatio() >= S.targetPct) nextLevel();
+        }
+
+        function nextLevel() {
+          S.level++;
+          S.lives++;
+          startLevel(S.level);
+        }
+
+        function loseLife() {
+          S.lives--;
+          if (S.lives < 0) {
+            S.lives = 0;
+            gameOver();
+            return;
+          }
+          for (let i = 0; i < S.grid.length; i++) {
+            if (S.grid[i] === TRAIL) S.grid[i] = EMPTY;
+          }
+          S.trailMask.fill(0); // << önemli: yarım çizgiyi ve maskeyi sil
+          resetPlayer();
+          updateUI();
+        }
+
+        function gameOver() {
+          S.lives = 3;
+          startLevel(1);
+        }
+
+        function stepEnemies(dt) {
+          for (const e of S.enemies) {
+            let nx = e.x + e.vx * dt,
+              ny = e.y + e.vy * dt;
+            const bounce = (axis) => {
+              if (axis === "x") e.vx *= -1;
+              else e.vy *= -1;
+            };
+            const checkCell = (x, y) =>
+              !inBounds(x, y) ? WALL : S.grid[idx(x, y)];
+
+            const rx = Math.round(nx),
+              ry = Math.round(ny);
+            const cellsToCheck = [
+              [Math.round(nx - e.r), Math.round(ny)],
+              [Math.round(nx + e.r), Math.round(ny)],
+              [Math.round(nx), Math.round(ny - e.r)],
+              [Math.round(nx), Math.round(ny + e.r)],
+            ];
+
+            for (const c of cellsToCheck) {
+              if (checkCell(c[0], c[1]) === TRAIL) {
+                loseLife();
+                return;
+              }
+            }
+
+            let hitX = false,
+              hitY = false;
+            for (const c of cellsToCheck) {
+              const cell = checkCell(c[0], c[1]);
+              if (cell === WALL || cell === FILL) {
+                if (c[0] !== rx) hitX = true;
+                if (c[1] !== ry) hitY = true;
+              }
+            }
+            if (hitX) bounce("x");
+            if (hitY) bounce("y");
+            if (hitX || hitY) {
+              nx = e.x + e.vx * dt;
+              ny = e.y + e.vy * dt;
+            }
+
+            e.x = Math.max(1, Math.min(GRID_W - 2, nx));
+            e.y = Math.max(1, Math.min(GRID_H - 2, ny));
+          }
+        }
+
+        function draw() {
+          // Arka plan
+          if (bgReady) {
+            ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+          } else {
+            const g = ctx.createLinearGradient(
+              0,
+              0,
+              canvas.width,
+              canvas.height
+            );
+            g.addColorStop(0, "#1b2547");
+            g.addColorStop(1, "#0d1633");
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 0.12;
+            for (let x = 0; x < canvas.width; x += CELL * 4) {
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(x, 0, 1, canvas.height);
+            }
+            for (let y = 0; y < canvas.height; y += CELL * 4) {
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(0, y, canvas.width, 1);
+            }
+            ctx.globalAlpha = 1;
+          }
+
+          // Karanlık maske + FILL açma
+          ctx.save();
+          ctx.fillStyle = "rgba(0,0,0,0.6)";
+          ctx.fillRect(
+            CELL,
+            CELL,
+            canvas.width - 2 * CELL,
+            canvas.height - 2 * CELL
+          );
+          ctx.globalCompositeOperation = "destination-out";
+          for (let y = 1; y < GRID_H - 1; y++) {
+            for (let x = 1; x < GRID_W - 1; x++) {
+              if (S.grid[idx(x, y)] === FILL) {
+                ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+              }
+            }
+          }
+          ctx.restore();
+
+          // Duvarlar
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          for (let y = 0; y < GRID_H; y++) {
+            for (let x = 0; x < GRID_W; x++) {
+              if (S.grid[idx(x, y)] === WALL)
+                ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+            }
+          }
+
+          // Trail
+          ctx.fillStyle = "rgba(103,232,249,1)";
+          for (let y = 0; y < GRID_H; y++) {
+            for (let x = 0; x < GRID_W; x++) {
+              if (S.grid[idx(x, y)] === TRAIL)
+                ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+            }
+          }
+
+          // Düşmanlar
+          ctx.fillStyle = "rgba(239,68,68,1)";
+          for (const e of S.enemies) {
+            ctx.beginPath();
+            ctx.arc(e.x * CELL, e.y * CELL, e.r * CELL, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Oyuncu
+          ctx.fillStyle = "#a7f3d0";
+          ctx.fillRect(S.player.x * CELL, S.player.y * CELL, CELL, CELL);
+
+          // Metrikler
+          const pct = Math.round(fillRatio() * 100);
+          ui.pct.textContent = pct + "%";
+          ui.score.textContent = Math.round(S.score);
+        }
+
+        function tick(now) {
+          const dtms = Math.min(30, now - S.last);
+          S.last = now;
+          if (!S.paused) {
+            if (now % 45 < dtms) stepPlayer();
+            stepEnemies(dtms / 16.666);
+            S.score += dtms * 0.01;
+          }
+          draw();
+          requestAnimationFrame(tick);
+        }
+
+        // Dosyadan arka plan
+        ui.file.addEventListener("change", (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            bg.src = reader.result;
+          };
+          reader.readAsDataURL(f);
+        });
+
+        // Başlat
+        startLevel(1);
+        requestAnimationFrame(tick);
+      })();
+    </script>
+  </body>
+</html>

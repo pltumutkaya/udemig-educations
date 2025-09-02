@@ -1,5 +1,7 @@
 @use "./mixin";
 @use "./variables";
+
+//Header Bölümü
 header {
   background: rgba(255, 255, 255, 0.44);
   border-radius: 0 0 16px 16px;
@@ -17,18 +19,90 @@ header {
 
   //logo
   .logo {
-    font-weight: 700;
     font-size: 33px;
+    font-weight: 700;
     white-space: nowrap;
     color: variables.$text-color;
+
+    @include mixin.mobile {
+      font-size: 25px;
+    }
 
     //
     span {
       color: variables.$main-color;
     }
   }
+
   // Navigation
   nav {
     @include mixin.flexBox;
+    gap: 32px;
+    @include mixin.laptop {
+      display: none;
+    }
+    @include mixin.tablet {
+      display: none;
+    }
+    @include mixin.mobile {
+      display: none;
+    }
+
+    a {
+      text-transform: capitalize;
+      font-size: variables.$p-font;
+      font-weight: 500;
+      white-space: nowrap;
+      display: block;
+      color: variables.$text-color;
+
+      &:hover {
+        transform: scale(1.2);
+        color: variables.$main-color;
+        transition: variables.$transition;
+      }
+    }
+  }
+  // Header right Bölümü
+
+  .header-right {
+    a,
+    button {
+      @include mixin.headerIcon;
+    }
+    a {
+      @include mixin.mobile {
+        display: none;
+      }
+    }
+    a:first-child {
+      font-size: variables.$p-font;
+    }
+
+    button {
+      background-color: transparent;
+    }
+  }
+}
+
+// Küçük ekranlarda nav içerisindeki elemanları yönetmek için gerekli class yapısı
+
+nav.active {
+  display: flex !important;
+  flex-direction: column;
+  gap: 20px;
+  position: fixed;
+  top: 100px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.44);
+  border-radius: 16px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(6.1px);
+  -webkit-backdrop-filter: blur(6.1px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 16px;
+
+  a {
+    font-size: 0.9rem;
   }
 }
