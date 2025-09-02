@@ -1,6 +1,6 @@
 @use "./variables";
-@use "./mixin";
-//Flexbox
+
+// Flex box
 @mixin flexBox {
   display: flex;
   align-items: center;
@@ -13,9 +13,8 @@
   margin: 5px 18px;
   transition: variables.$transition;
   display: inline-block;
-  color: variables.$text-color;
   &:hover {
-    transform: translatey(-3px);
+    transform: translateY(-3px);
     color: variables.$main-color;
   }
 }
@@ -39,7 +38,20 @@
   }
 }
 
-// Mixin For Responsive Design Bölümü
+@mixin formItems {
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+@mixin container {
+  padding: 70px 17% 60px;
+
+  @include mobile {
+    padding: 50px 3% 30px;
+  }
+}
+// Mixin's for responsive design
 
 @mixin laptop {
   @media (max-width: 1300px) {

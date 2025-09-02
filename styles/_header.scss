@@ -1,7 +1,6 @@
-@use "./mixin";
 @use "./variables";
+@use "./mixin";
 
-//Header Bölümü
 header {
   background: rgba(255, 255, 255, 0.44);
   border-radius: 0 0 16px 16px;
@@ -9,7 +8,6 @@ header {
   backdrop-filter: blur(6.1px);
   -webkit-backdrop-filter: blur(6.1px);
   border: 1px solid rgba(255, 255, 255, 0.15);
-
   @include mixin.flexBox;
   padding: 27px 17px;
   position: fixed;
@@ -17,18 +15,17 @@ header {
   width: 100%;
   z-index: 100;
 
-  //logo
+  // Logo
   .logo {
     font-size: 33px;
     font-weight: 700;
     white-space: nowrap;
-    color: variables.$text-color;
 
     @include mixin.mobile {
       font-size: 25px;
     }
 
-    //
+    // span
     span {
       color: variables.$main-color;
     }
@@ -37,50 +34,47 @@ header {
   // Navigation
   nav {
     @include mixin.flexBox;
-    gap: 32px;
+    gap: 22px;
+
     @include mixin.laptop {
-      display: none;
-    }
-    @include mixin.tablet {
-      display: none;
-    }
-    @include mixin.mobile {
       display: none;
     }
 
     a {
-      text-transform: capitalize;
+      text-transform: uppercase;
       font-size: variables.$p-font;
       font-weight: 500;
       white-space: nowrap;
-      display: block;
-      color: variables.$text-color;
+      display: inline-block;
+      transition: variables.$transition;
 
       &:hover {
-        transform: scale(1.2);
+        scale: 1.2;
         color: variables.$main-color;
-        transition: variables.$transition;
       }
     }
   }
-  // Header right Bölümü
 
+  // Header Right
   .header-right {
     a,
     button {
       @include mixin.headerIcon;
     }
+
     a {
       @include mixin.mobile {
         display: none;
       }
     }
+
     a:first-child {
       font-size: variables.$p-font;
     }
 
     button {
       background-color: transparent;
+      color: variables.$text-color;
     }
   }
 }

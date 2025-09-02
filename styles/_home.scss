@@ -25,13 +25,20 @@
       letter-spacing: 6px;
       margin-bottom: 10px;
     }
-
     // Title
     h1 {
       font-size: variables.$h1-font;
       line-height: 1.2;
       font-weight: bold;
       margin-bottom: 20px;
+
+      @include mixin.laptop {
+        font-size: 4rem;
+      }
+
+      @include mixin.tablet {
+        font-size: variables.$h2-font;
+      }
     }
 
     // Description
@@ -43,7 +50,9 @@
     }
 
     // Button
+
     button {
+      @include mixin.button;
     }
   }
 }

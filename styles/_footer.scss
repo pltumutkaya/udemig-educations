@@ -1,0 +1,78 @@
+@use "./variables";
+@use "./mixin";
+
+footer {
+  padding: 20px 30px;
+  margin-top: 50px;
+
+  // Footer Content
+  .footer-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem 4rem;
+    margin-bottom: 50px;
+    align-items: start; // Grid yapısı içerisinde bulunan box elemanlarının içeriği birbirinden farklı olduğundan bu elemanların aynı hizada bulunması için içeriği az olan elemanı diğerleriyle eşitlemek için gereksiz boşluk verdi.Bunu engellemek içinse box'ların kapsayıcısı olan footer-content'e align-items:start verdik.Bu sayede ilgili elemanlar aynı başlangıç hizasına konumlandı ve sıkıntı çözüldü.
+    // Box
+    .box {
+      @include mixin.flexBox;
+      align-items: unset;
+      flex-direction: column;
+      gap: 10px;
+
+      // Title
+      h3 {
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      // List
+      ul {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+        a {
+          color: #979797;
+          transition: variables.$transition;
+          display: block;
+
+          &:hover {
+            color: variables.$text-color;
+            transform: translateX(-5px);
+          }
+        }
+      }
+
+      // Social
+      .social-links {
+        @include mixin.flexBox;
+        gap: 10px;
+        a {
+          background-color: #202020;
+          width: 45px;
+          height: 45px;
+          display: grid;
+          place-items: center;
+          border-radius: 50%;
+          font-size: 20px;
+          transition: variables.$transition;
+
+          &:hover {
+            background-color: variables.$main-color;
+            transform: translateX(-5px);
+            color: variables.$bg-color;
+          }
+        }
+      }
+    }
+  }
+
+  // Copyright
+  .copyright {
+    text-align: center;
+    font-size: 15px;
+    color: #979797;
+    span {
+      color: #535353;
+    }
+  }
+}

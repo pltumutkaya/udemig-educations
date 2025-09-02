@@ -1,0 +1,73 @@
+@use "./mixin";
+@use "./variables";
+
+#popular-courses {
+  @include mixin.container;
+
+  // Title
+  h2 {
+    font-size: variables.$h2-font;
+    text-align: center;
+    white-space: nowrap;
+    @include mixin.tablet {
+      font-size: 2rem;
+    }
+  }
+
+  // Wrapper
+  .card-wrapper {
+    padding: 5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 3rem;
+
+    // Card
+    .card {
+      position: relative;
+      cursor: pointer;
+
+      &:hover img {
+        scale: 1.05;
+      }
+      // Image
+      img {
+        width: 100%;
+        height: 300px;
+        border-radius: 10px;
+        filter: brightness(70%);
+        cursor: pointer;
+        transition: variables.$transition;
+      }
+
+      // Info
+      .info {
+        position: absolute;
+        bottom: 40px;
+        left: 25px;
+        @include mixin.flexBox;
+        align-items: start;
+        flex-direction: column;
+        gap: 15px;
+
+        h4 {
+          @include mixin.flexBox;
+          gap: 5px;
+          font-size: 17px;
+          i {
+            color: variables.$main-color;
+          }
+        }
+      }
+    }
+  }
+
+  // Button
+  .button-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    button {
+      @include mixin.button;
+    }
+  }
+}
