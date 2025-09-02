@@ -11,7 +11,7 @@ footer {
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem 4rem;
     margin-bottom: 50px;
-    align-items: start; // Grid yapısı içerisinde bulunan box elemanlarının içeriği birbirinden farklı olduğundan bu elemanların aynı hizada bulunması için içeriği az olan elemanı diğerleriyle eşitlemek için gereksiz boşluk verdi.Bunu engellemek içinse box'ların kapsayıcısı olan footer-content'e align-items:start verdik.Bu sayede ilgili elemanlar aynı başlangıç hizasına konumlandı ve sıkıntı çözüldü.
+    align-items: start; // Grid yapısı içerisinde bulunan box elemanlarının içeriği birbirinden farklı olduğundan bu eleemanların aynı hizada bulunması için içeriği az olan elemanı diğerleriyle eşitlemek için gereksiz boşluk verdi.Bunu engellemek içinse box'ların kapsayıcısı olan footer-content'e align-items:start verdik.Bu sayede ilgili elemanlar aynı başlangıç hizasına konumlandı ve sıkıntı çözüldü.
     // Box
     .box {
       @include mixin.flexBox;

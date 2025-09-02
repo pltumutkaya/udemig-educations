@@ -3,7 +3,7 @@
 
 #about-us {
   @include mixin.container;
-  // Bir mixin içerisinde media sorgusu yapıldıysa bunun akabinde kullanılacak mixin için & işareti kullanılmalıdır.
+  // Bir mixin içerisindeki media sorgusu yapıldıysa bunun akabinde kullanılacak mixin için & işareti kullanılmalıdır.
 
   & {
     @include mixin.flexBox;
